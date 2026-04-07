@@ -1,11 +1,10 @@
 from pathlib import Path
 from langchain_community.document_loaders import PyPDFLoader
-from langchain_community.document_loaders.base_o365 import CHUNK_SIZE
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
-from langchain_community.embeddings import HuggingFaceBgeEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 
-embeddings = HuggingFaceBgeEmbeddings(model_name="intfloat/multilingual-e5-small")
+embeddings = HuggingFaceEmbeddings(model_name="intfloat/multilingual-e5-small")
 
 def indexar():
     data_dir = Path("docs")
@@ -19,8 +18,8 @@ def indexar():
 
     print(f"Documentos {len(docs)} carregados")
 
-    splitter = RecursiveCharacterTextSplitter(chunk_size=300,
-        chunk_overlap=50)
+    splitter = RecursiveCharacterTextSplitter(chunk_size=500,
+        chunk_overlap=100)
     chunks = splitter.split_documents(docs)
 
     print(f"Chunks {len(chunks)} gerados")
@@ -31,3 +30,5 @@ def indexar():
 
     print(f"Indexados {len(vector_store.index_to_docstore_id)} chunks")
 
+if __name__ == "__main__":
+    indexar()

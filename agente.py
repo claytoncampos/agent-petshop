@@ -1,4 +1,5 @@
 import os
+from typing import TypedDict
 from dotenv import load_dotenv
 from rich import print
 from langchain_groq import ChatGroq
@@ -6,6 +7,14 @@ from langchain_core.prompts import ChatMessagePromptTemplate, ChatPromptTemplate
 from indexar import embeddings
 from langchain_community.vectorstores import FAISS
 from langchain_core.runnables import RunnablePassthrough
+from langchain_core.tools import tool
+from typing_extensions import Annotated,TypedDict
+from langchain_core.runnables.graph import  MermaidDrawMethod
+
+
+from langgraph.graph import StateGraph,START,END
+from langgraph.graph import add_messages
+from langchain_core.messages import HumanMessage
 
 
 load_dotenv()
@@ -20,16 +29,53 @@ prompt = ChatPromptTemplate.from_template(
 )
 
 def format_chunks(chunks):
-    return "\n\n".join(chunk.page_content for chunk in chunks)
+    texto = "\n\n".join(chunk.page_content for chunk in chunks)
+    return texto[:2000]  # LIMITA
+
+@tool
+def busca_rag(query: str) -> str:
+    """
+    Busca de inofrmações do Pet Shop, como : 
+    descrição, endereço, produtos, politicas, fidelidade e dúvidas frequentes.
+
+    """
+    chunks = retriever.invoke(query)
+    return format_chunks(chunks)
+
+class Estado(TypedDict):
+    mensagens: Annotated[list, add_messages]
 
 
-def invoke_llm(text):
-    chain = { "context": retriever | format_chunks, "question": RunnablePassthrough()} | prompt | llm
-    result =  chain.invoke(text)
-    return result.content
+def invoke_llm(estado: Estado)-> Estado:
+    return { "mensagens": [llm.invoke(estado["mensagens"])]}
 
+
+
+
+
+builder = StateGraph(Estado)
+builder.add_node("no_llm", invoke_llm)
+builder.add_edge(START,"no_llm")
+builder.add_edge("no_llm", END)
+
+graph = builder.compile()
+
+# Gera uma imagem PNG usando o serviço online do Mermaid (não requer pygraphviz)
+img_data = graph.get_graph().draw_mermaid_png(
+    draw_method=MermaidDrawMethod.API
+)
+
+with open("graph.png", "wb") as f:
+    f.write(img_data)
+
+def chamar_grafo(text):
+    return graph.invoke(Estado({"mensagens":[HumanMessage(content=text)]}))
 
 if __name__ == "__main__":
-    print(invoke_llm("quais produtos tem ?"))
+
+
+
+    print(chamar_grafo("quais produtos tem ?"))
+
 
 
