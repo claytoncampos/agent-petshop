@@ -12,10 +12,11 @@ from typing_extensions import Annotated,TypedDict
 from langchain_core.runnables.graph import  MermaidDrawMethod
 
 
+
 from langgraph.graph import StateGraph,START,END
 from langgraph.graph import add_messages
-from langchain_core.messages import HumanMessage
-
+from langchain_core.messages import HumanMessage,SystemMessage
+from langgraph.prebuilt import ToolNode, tools_condition
 
 load_dotenv()
 
@@ -43,19 +44,27 @@ def busca_rag(query: str) -> str:
     return format_chunks(chunks)
 
 class Estado(TypedDict):
-    mensagens: Annotated[list, add_messages]
-
-
-def invoke_llm(estado: Estado)-> Estado:
-    return { "mensagens": [llm.invoke(estado["mensagens"])]}
+    messages: Annotated[list, add_messages]
 
 
 
+
+
+ferramentas = [busca_rag]
+
+llm_com_ferramentas = llm.bind_tools(ferramentas)
+
+def invoke_llm_com_ferramentas(estado: Estado)-> Estado:
+    return { "messages": [llm_com_ferramentas.invoke(estado["messages"])]}
 
 
 builder = StateGraph(Estado)
-builder.add_node("no_llm", invoke_llm)
+builder.add_node("no_llm", invoke_llm_com_ferramentas)
+builder.add_node("tools", ToolNode(ferramentas))
+
 builder.add_edge(START,"no_llm")
+builder.add_conditional_edges("no_llm", tools_condition)
+builder.add_edge("tools","no_llm")
 builder.add_edge("no_llm", END)
 
 graph = builder.compile()
@@ -69,7 +78,9 @@ with open("graph.png", "wb") as f:
     f.write(img_data)
 
 def chamar_grafo(text):
-    return graph.invoke(Estado({"mensagens":[HumanMessage(content=text)]}))
+    return graph.invoke(Estado({"messages":[
+        SystemMessage(content="Voçê é um assistente do PetShop Animalia. Responda de forma educada."),
+        HumanMessage(content=text)]}))
 
 if __name__ == "__main__":
 
