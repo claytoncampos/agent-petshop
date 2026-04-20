@@ -77,16 +77,23 @@ img_data = graph.get_graph().draw_mermaid_png(
 with open("graph.png", "wb") as f:
     f.write(img_data)
 
+estado_global = Estado({"messages":[
+        SystemMessage(content="Voçê é um assistente do PetShop Animalia. Responda de forma educada.")
+        ]})
+
 def chamar_grafo(text):
-    return graph.invoke(Estado({"messages":[
-        SystemMessage(content="Voçê é um assistente do PetShop Animalia. Responda de forma educada."),
-        HumanMessage(content=text)]}))["messages"][-1].content
+    global estado_global
+    estado_global["messages"].append(HumanMessage(content=text))
+    estado_global = graph.invoke(estado_global)
+    return estado_global["messages"][-1].content
 
 if __name__ == "__main__":
 
 
 
-    print(chamar_grafo("quais produtos tem ?"))
+    print(chamar_grafo("meu nome é Clayton"))
+    print(chamar_grafo("Quais produtos você tem?"))
+    print(chamar_grafo("Qual o meu nome?"))
 
 
 
