@@ -80,7 +80,7 @@ with open("graph.png", "wb") as f:
 def chamar_grafo(text):
     return graph.invoke(Estado({"messages":[
         SystemMessage(content="Voçê é um assistente do PetShop Animalia. Responda de forma educada."),
-        HumanMessage(content=text)]}))
+        HumanMessage(content=text)]}))["messages"][-1].content
 
 if __name__ == "__main__":
 
